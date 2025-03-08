@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app/modules/login/login_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,6 +12,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(), // Keeping a dark theme for black-and-white UI
       home: const SplashScreen(),
     );
   }
@@ -29,7 +31,9 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => const HomePage()));
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      ); // 🔄 Go to Login instead of HomePage
     });
   }
 
@@ -43,21 +47,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: const Center(
-        child: Text(
-          "Welcome to Disaster Management App",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-}
-
