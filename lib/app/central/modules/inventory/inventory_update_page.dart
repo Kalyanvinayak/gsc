@@ -66,27 +66,65 @@ class _InventoryUpdatePageState extends State<InventoryUpdatePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Update Inventory Item")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: "Item Name"),
+      appBar: AppBar(title: const Text("Update Inventory & View Stock")),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: "Item Name"),
+                ),
+                TextField(
+                  controller: _quantityController,
+                  decoration: const InputDecoration(labelText: "Quantity"),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: updateItem,
+                  child: const Text("Update Item"),
+                ),
+              ],
             ),
-            TextField(
-              controller: _quantityController,
-              decoration: InputDecoration(labelText: "Quantity"),
-              keyboardType: TextInputType.number,
+          ),
+          const Divider(thickness: 2),
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text(
+              "Current Inventory Stock",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: updateItem,
-              child: Text("Update Item"),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: inventoryCollection.snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text("No inventory items available."));
+                }
+
+                var inventoryList = snapshot.data!.docs;
+
+                return ListView.builder(
+                  itemCount: inventoryList.length,
+                  itemBuilder: (context, index) {
+                    var item = inventoryList[index];
+                    return ListTile(
+                      title: Text(item['name']),
+                      subtitle: Text("Stock: ${item['quantity']}"),
+                    );
+                  },
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
