@@ -20,6 +20,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'cyclone_details_page.dart'; // Import for navigation
 import 'flood_details_page.dart'; // Import for FloodDetailsPage
+import 'active_disaster_details_page.dart'; // Import for the new details page
+import 'package:gsc/services/disaster_service.dart'; // Added for DisasterService
+// import 'package:http/http.dart' as http; // Already imported
 
 import 'package:gsc/services/translation_service.dart';
 
@@ -32,6 +35,8 @@ class DashboardView extends StatefulWidget {
 
 class _DashboardViewState extends State<DashboardView> {
   List<DisasterEvent> disasterEvents = [];
+  // Instantiate DisasterService
+  final DisasterService _disasterService = DisasterService(client: http.Client());
 
   final List<Map<String, dynamic>> representativeLocations = [
     {'name': 'Delhi', 'lat': 28.7041, 'lon': 77.1025},
@@ -232,10 +237,11 @@ class _DashboardViewState extends State<DashboardView> {
             stops: [0.3, 1.0],
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: SingleChildScrollView( // Added SingleChildScrollView
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Overview Card (Kept from original layout)
               Card(
@@ -305,18 +311,30 @@ class _DashboardViewState extends State<DashboardView> {
                   itemCount: disasterEvents.length,
                   itemBuilder: (context, index) {
                     final event = disasterEvents[index];
-                    return Card(
-                      elevation: 4,
-                      margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 0),
-                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+                    return InkWell( // Wrapped Card with InkWell
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ActiveDisasterDetailsPage(
+                              selectedEvent: event,
+                              allDisasterEvents: disasterEvents, // Pass the full list
+                            ),
+                          ),
+                        );
+                      },
+                      child: Card(
+                        elevation: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
                               event.type.toString().split('.').last.toUpperCase(),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
@@ -371,8 +389,22 @@ class _DashboardViewState extends State<DashboardView> {
                                 ),
                                 const SizedBox(width: 8),
                                 ElevatedButton(
-                                  onPressed: () {
-                                    // TODO: Implement raise alert functionality
+                                  onPressed: () async { // Made onPressed async
+                                    try {
+                                      await _disasterService.sendDisasterAlert(event);
+                                      if (mounted) { // Check if the widget is still in the tree
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text("Alert sent for ${event.type.toString().split('.').last}!")),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      print("Error sending disaster alert from UI: $e");
+                                      if (mounted) { // Check if the widget is still in the tree
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text("Failed to send alert for ${event.type.toString().split('.').last}. Error: $e")),
+                                        );
+                                      }
+                                    }
                                   },
                                   child: const TranslatableText("Raise Alert"),
                                   style: ElevatedButton.styleFrom(
@@ -450,7 +482,6 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                   ],
                 ),
-              
             ],
           ),
         ),
