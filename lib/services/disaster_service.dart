@@ -4,6 +4,7 @@ import 'package:gsc/models/disaster_event.dart';
 import 'package:gsc/models/flood_prediction.dart';
 import 'package:gsc/models/cyclone_prediction.dart';
 import 'package:gsc/models/earthquake_prediction.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class DisasterService {
   final http.Client _client;
@@ -161,5 +162,73 @@ class DisasterService {
       }
     }
     return allFetchedDisasterData;
+  }
+
+  Future<void> sendDisasterAlert(DisasterEvent event) async {
+    final dbRef = FirebaseDatabase.instance.ref("disaster_alerts");
+
+    double? latitude;
+    double? longitude;
+    Map<String, dynamic> intensityDetails = {};
+
+    switch (event.type) {
+      case DisasterType.flood:
+        if (event.predictionData is FloodPrediction) {
+          final data = event.predictionData as FloodPrediction;
+          latitude = data.lat;
+          longitude = data.lon;
+          intensityDetails = {'risk': data.floodRisk};
+        }
+        break;
+      case DisasterType.cyclone:
+        if (event.predictionData is CyclonePrediction) {
+          final data = event.predictionData as CyclonePrediction;
+          latitude = data.location.latitude;
+          longitude = data.location.longitude;
+          intensityDetails = {
+            'condition': data.cycloneCondition,
+            'wind_speed_knots': data.weatherData.usaWind, // usaWind is directly under weatherData
+          };
+        }
+        break;
+      case DisasterType.earthquake:
+        if (event.predictionData is EarthquakePrediction) {
+          final data = event.predictionData as EarthquakePrediction;
+          // For earthquakes, lat/lon are not directly available from current model structure without geocoding.
+          latitude = null;
+          longitude = null;
+          intensityDetails = {
+            'cities': data.highRiskCities.map((c) => {'city': c.city, 'state': c.state, 'magnitude': c.magnitude}).toList(),
+            'coordinates_note': 'Geocoding needed for precise earthquake location. Representative lat/lon not available from source.',
+          };
+        }
+        break;
+      case DisasterType.unknown:
+      default:
+        // Handle unknown or default case, perhaps log an error or set minimal data
+        print("Attempted to send alert for unknown disaster type: ${event.type}");
+        intensityDetails = {'note': 'Data not available for this type'};
+        break;
+    }
+
+    final Map<String, dynamic> alertData = {
+      'type': event.type.toString().split('.').last,
+      'timestamp': DateTime.now().toIso8601String(),
+      'locationSummary': event.locationSummary,
+      'severitySummary': event.severitySummary,
+      'isSignificant': event.isCategorizedAsSignificant().toString(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'intensityDetails': intensityDetails,
+    };
+
+    try {
+      await dbRef.push().set(alertData);
+      print("Disaster alert successfully sent to Firebase: ${event.type}");
+    } catch (e) {
+      print("Error sending disaster alert to Firebase: $e");
+      // Rethrow or handle as per application's error handling strategy
+      rethrow;
+    }
   }
 }
