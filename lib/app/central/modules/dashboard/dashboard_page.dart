@@ -43,6 +43,115 @@ import 'package:latlong2/latlong.dart';
 import 'cyclone_details_page.dart';
 
 import '../../../../services/translation_service.dart';
+import 'dart:math';
+
+
+
+class IndianLocationGenerator {
+  static final Random _random = Random();
+  
+  // India's approximate geographical bounds
+  static const double _minLatitude = 8.0;    // Southern tip (near Kanyakumari)
+  static const double _maxLatitude = 37.0;   // Northern tip (Ladakh)
+  static const double _minLongitude = 68.0;  // Western tip (Gujarat)
+  static const double _maxLongitude = 97.0;  // Eastern tip (Arunachal Pradesh)
+  
+  // Optional: List of major Indian cities for reference names
+  static final List<String> _indianCities = [
+    'Delhi', 'Mumbai', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Chennai',
+    'Kolkata', 'Surat', 'Pune', 'Jaipur', 'Lucknow', 'Kanpur', 'Nagpur',
+    'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri', 'Patna',
+    'Vadodara', 'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad',
+    'Meerut', 'Rajkot', 'Kalyan', 'Vasai', 'Varanasi', 'Srinagar',
+    'Aurangabad', 'Dhanbad', 'Amritsar', 'Navi Mumbai', 'Allahabad',
+    'Ranchi', 'Howrah', 'Coimbatore', 'Jabalpur', 'Gwalior', 'Vijayawada',
+    'Jodhpur', 'Madurai', 'Raipur', 'Kota', 'Guwahati', 'Chandigarh',
+    'Solapur', 'Hubli', 'Tiruchirappalli', 'Bareilly', 'Mysore', 'Tiruppur'
+  ];
+  
+  /// Generate a random coordinate within India's bounds
+  static List<double> generateRandomLocation() {
+    double lat = _minLatitude + _random.nextDouble() * (_maxLatitude - _minLatitude);
+    double lon = _minLongitude + _random.nextDouble() * (_maxLongitude - _minLongitude);
+    
+    // Round to 4 decimal places for reasonable precision
+    lat = double.parse(lat.toStringAsFixed(4));
+    lon = double.parse(lon.toStringAsFixed(4));
+    
+    return [lat, lon];
+  }
+  
+  /// Generate multiple random locations
+  static List<List<double>> generateMultipleLocations(int count) {
+    return List.generate(count, (index) => generateRandomLocation());
+  }
+  
+  /// Generate random locations with more realistic distribution
+  /// (weighted towards populated areas)
+  static List<double> generateWeightedRandomLocation() {
+    // Define regions with different weights
+    List<Map<String, dynamic>> regions = [
+      // Northern Plains (Higher population density)
+      {'minLat': 24.0, 'maxLat': 32.0, 'minLon': 72.0, 'maxLon': 88.0, 'weight': 0.4},
+      // Western India (High population)
+      {'minLat': 15.0, 'maxLat': 26.0, 'minLon': 68.0, 'maxLon': 77.0, 'weight': 0.3},
+      // Southern India (Moderate population)
+      {'minLat': 8.0, 'maxLat': 20.0, 'minLon': 74.0, 'maxLon': 80.0, 'weight': 0.2},
+      // Eastern India
+      {'minLat': 20.0, 'maxLat': 28.0, 'minLon': 85.0, 'maxLon': 97.0, 'weight': 0.1},
+    ];
+    
+    // Select region based on weight
+    double randomValue = _random.nextDouble();
+    double cumulativeWeight = 0.0;
+    Map<String, dynamic> selectedRegion = regions.first;
+    
+    for (var region in regions) {
+      cumulativeWeight += region['weight'];
+      if (randomValue <= cumulativeWeight) {
+        selectedRegion = region;
+        break;
+      }
+    }
+    
+    // Generate coordinates within selected region
+    double lat = selectedRegion['minLat'] + 
+                _random.nextDouble() * (selectedRegion['maxLat'] - selectedRegion['minLat']);
+    double lon = selectedRegion['minLon'] + 
+                _random.nextDouble() * (selectedRegion['maxLon'] - selectedRegion['minLon']);
+    
+    lat = double.parse(lat.toStringAsFixed(4));
+    lon = double.parse(lon.toStringAsFixed(4));
+    
+    return [lat, lon];
+  }
+}
+
+// Usage Examples:
+
+// Generate 20 random coordinate pairs [lat, lon]
+List<List<double>> coordinatePairs = 
+    IndianLocationGenerator.generateMultipleLocations(20);
+
+// Or generate weighted random coordinates (more realistic distribution)
+List<List<double>> weightedCoordinates = 
+    List.generate(20, (index) => IndianLocationGenerator.generateWeightedRandomLocation());
+
+// Single random coordinate pair
+List<double> singleCoordinate = IndianLocationGenerator.generateRandomLocation();
+
+// Example: Creating your list format from random coordinates
+List<Map<String, dynamic>> representativeLocations = List.generate(18, (index) {
+  List<double> coords = IndianLocationGenerator.generateRandomLocation();
+  return {
+    'name': 'Location_$index',
+    'lat': coords[0],
+    'lon': coords[1],
+  };
+});
+
+// Or if you just want the coordinate pairs:
+List<List<double>> randomCoordinates = IndianLocationGenerator.generateMultipleLocations(18);
 
 class DashboardView extends StatefulWidget {
   const DashboardView({Key? key}) : super(key: key);
@@ -65,66 +174,7 @@ class _DashboardViewState extends State<DashboardView> {
   int _topPriorityDisasterCount = 0;
 
   bool _isLoading = true;
-
-  final List<Map<String, dynamic>> representativeLocations = [
-    // Northern India (Earthquake Prone)
-    {'name': 'Srinagar', 'lat': 34.0837, 'lon': 74.7973}, // Zone V
-
-    {'name': 'Shimla', 'lat': 31.1048, 'lon': 77.1734}, // Zone IV
-
-    {'name': 'Dehradun', 'lat': 30.3165, 'lon': 78.0322}, // Zone IV
-
-    {'name': 'Delhi', 'lat': 28.7041, 'lon': 77.1025}, // Zone IV
-
-    // North-Eastern India (High Earthquake & Flood Risk)
-    {'name': 'Guwahati', 'lat': 26.1445, 'lon': 91.7362}, // Zone V
-
-    {'name': 'Imphal', 'lat': 24.8170, 'lon': 93.9368}, // Zone V
-
-    {'name': 'Agartala', 'lat': 23.8315, 'lon': 91.2868}, // Zone V
-
-    {'name': 'Aizawl', 'lat': 23.7271, 'lon': 92.7176}, // Zone V
-
-    // Eastern India (Flood & Cyclone Prone)
-    {'name': 'Kolkata', 'lat': 22.5726, 'lon': 88.3639}, // Flood/Cyclone
-
-    {'name': 'Bhubaneswar', 'lat': 20.2961, 'lon': 85.8245}, // Cyclone
-
-    {'name': 'Puri', 'lat': 19.8135, 'lon': 85.8312}, // Cyclone
-
-    {'name': 'Patna', 'lat': 25.5941, 'lon': 85.1376}, // Flood
-
-    // Western India (Earthquake & Cyclone Prone)
-    {'name': 'Mumbai', 'lat': 19.0760, 'lon': 72.8777}, // Cyclone/Flood
-
-    {'name': 'Ahmedabad', 'lat': 23.0225, 'lon': 72.5714},
-
-    {'name': 'Surat', 'lat': 21.1702, 'lon': 72.8311}, // Cyclone/Flood
-
-    {'name': 'Bhuj', 'lat': 23.2423, 'lon': 69.6672}, // Zone V (Earthquake)
-
-    {'name': 'Pune', 'lat': 18.5204, 'lon': 73.8567},
-
-    // Southern India (Cyclone & Flood Prone)
-    {'name': 'Chennai', 'lat': 13.0827, 'lon': 80.2707}, // Cyclone/Flood
-
-    {'name': 'Visakhapatnam', 'lat': 17.6868, 'lon': 83.2185}, // Cyclone
-
-    {'name': 'Kochi', 'lat': 9.9312, 'lon': 76.2673}, // Flood
-
-    {'name': 'Hyderabad', 'lat': 17.3850, 'lon': 78.4867},
-
-    {'name': 'Bengaluru', 'lat': 12.9716, 'lon': 77.5946},
-
-    // Central India
-    {'name': 'Nagpur', 'lat': 21.1458, 'lon': 79.0882},
-
-    {'name': 'Bhopal', 'lat': 23.2599, 'lon': 77.4126},
-
-    // Islands (High Seismic and Cyclone risk)
-    {'name': 'Port Blair', 'lat': 11.6234, 'lon': 92.7265}, // Zone V
-  ];
-
+  
   @override
   void initState() {
     super.initState();
