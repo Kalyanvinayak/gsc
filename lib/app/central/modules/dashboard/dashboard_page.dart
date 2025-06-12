@@ -174,7 +174,20 @@ class _DashboardViewState extends State<DashboardView> {
   int _topPriorityDisasterCount = 0;
 
   bool _isLoading = true;
-  
+
+  bool _isFloodSignificant(FloodPrediction prediction) {
+    final risk = prediction.floodRisk.toLowerCase();
+    // Only show medium, high, or severe floods
+    return risk == 'medium' || risk == 'high' || risk == 'severe';
+  }
+
+  // MODIFIED: Helper function to check if cyclone meets minimum category criteria
+  bool _isCycloneSignificant(CyclonePrediction prediction) {
+    final category = _getCycloneCategory(prediction.cycloneCondition);
+    // Only show category 1 and above
+    return category >= 1;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -205,38 +218,29 @@ class _DashboardViewState extends State<DashboardView> {
     switch (event.type) {
       case DisasterType.earthquake:
         final data = event.predictionData as EarthquakePrediction;
-
         if (data.highRiskCities.isEmpty) return 0.0;
-
-        // Use the highest magnitude from any of its high-risk cities as the score
-
         return data.highRiskCities.map((c) => c.magnitude).reduce(max);
 
       case DisasterType.cyclone:
         final data = event.predictionData as CyclonePrediction;
-
-        // Use the parsed category number as the score
-
-        return _getCycloneCategory(data.cycloneCondition).toDouble();
+        final category = _getCycloneCategory(data.cycloneCondition);
+        // Return 0 if below category 1, otherwise return the category
+        return category >= 1 ? category.toDouble() : 0.0;
 
       case DisasterType.flood:
         final data = event.predictionData as FloodPrediction;
-
-        // Assign scores to flood risk levels
-
         final risk = data.floodRisk.toLowerCase();
-
+        // Only assign scores to medium and above
+        if (risk == 'severe' || risk == 'extreme') return 4.0;
         if (risk == 'high') return 3.0;
-
         if (risk == 'medium') return 2.0;
-
-        return 1.0;
+        return 0.0; // Low risk gets 0, effectively filtering it out
 
       default:
         return 0.0;
     }
   }
-
+  
   Future<void> fetchDisasterData() async {
     if (mounted) {
       setState(() {
